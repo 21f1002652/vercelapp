@@ -1,1 +1,3 @@
 fastapi
+uvicorn
+numpy  # for statistics calculations
