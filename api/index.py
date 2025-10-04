@@ -1,27 +1,33 @@
-from fastapi import FastAPI, Request, Response
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 import numpy as np
 
 app = FastAPI(title="Latency Analytics POST Endpoint")
 
-# Add CORS middleware (helps in most cases)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins
-    allow_methods=["POST"],
-    allow_headers=["*"],
-)
+# Fake telemetry data
+telemetry = {
+    "emea": [{"latency": 100, "uptime": 99}, {"latency": 200, "uptime": 98}],
+    "amer": [{"latency": 150, "uptime": 100}, {"latency": 160, "uptime": 99}],
+}
 
+# CORS headers
+CORS_HEADERS = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "*"
+}
+
+# OPTIONS route for preflight
+@app.options("/")
+async def preflight():
+    return JSONResponse(content={"status": "ok"}, headers=CORS_HEADERS)
+
+# POST endpoint
 @app.post("/")
 async def latency_metrics(request: Request):
     data = await request.json()
     regions = data.get("regions", [])
     threshold = data.get("threshold_ms", 180)
-
-    telemetry = {
-        "emea": [{"latency": 100, "uptime": 99}, {"latency": 200, "uptime": 98}],
-        "amer": [{"latency": 150, "uptime": 100}, {"latency": 160, "uptime": 99}],
-    }
 
     response_data = {}
     for region in regions:
@@ -46,11 +52,4 @@ async def latency_metrics(request: Request):
             "breaches": int(breaches)
         }
 
-    # Manually add CORS headers in the response
-    headers = {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST",
-        "Access-Control-Allow-Headers": "*"
-    }
-
-    return Response(content=app.json_encoder().encode(response_data), media_type="application/json", headers=headers)
+    return JSONResponse(content=response_data, headers=CORS_HEADERS)
